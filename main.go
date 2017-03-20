@@ -81,17 +81,17 @@ func getClient(token string) *github.Client {
 	return client
 }
 
-func writeKeys(w io.Writer, users []*github.User) error {
-	for _, member := range members {
-		keys, _, err := client.Users.ListKeys(*member.Login, nil)
+func writeKeys(client *github.Client, w io.Writer, users []*github.User) error {
+	for _, user := range users {
+		keys, _, err := client.Users.ListKeys(*user.Login, nil)
 		if err != nil {
 			return fmt.Errorf("Error when fetching keys: %s", err)
 		}
 		for _, key := range keys {
 			if key.Key == nil {
-				return fmt.Errorf("Key is null pointer for %s", *member.Login)
+				return fmt.Errorf("Key is null pointer for %s", *user.Login)
 			}
-			fmt.Fprintln(buf, *key.Key)
+			fmt.Fprintln(w, *key.Key)
 		}
 	}
 	return nil
@@ -121,7 +121,7 @@ func main() {
 
 	switch cfg.OutFile {
 	case "-":
-		if err := writeKeys(os.Stdout, members); err != nil {
+		if err := writeKeys(client, os.Stdout, members); err != nil {
 			log.Fatalf("Unable to write keys: %s", err)
 		}
 	default:
@@ -130,7 +130,7 @@ func main() {
 			log.Fatalf("Unable to open output file: %s", err)
 		}
 
-		if err := writeKeys(o, members); err != nil {
+		if err := writeKeys(client, o, members); err != nil {
 			log.Fatalf("Unable to write keys: %s", err)
 		}
 

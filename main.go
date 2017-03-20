@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"os"
 
 	"golang.org/x/oauth2"
 
@@ -79,11 +81,28 @@ func getClient(token string) *github.Client {
 	return client
 }
 
+func writeKeys(w io.Writer, users []*github.User) error {
+	for _, member := range members {
+		keys, _, err := client.Users.ListKeys(*member.Login, nil)
+		if err != nil {
+			return fmt.Errorf("Error when fetching keys: %s", err)
+		}
+		for _, key := range keys {
+			if key.Key == nil {
+				return fmt.Errorf("Key is null pointer for %s", *member.Login)
+			}
+			fmt.Fprintln(buf, *key.Key)
+		}
+	}
+	return nil
+}
+
 func main() {
 	cfg := struct {
 		TeamName     string `flag:"team" description:"Team to look for"`
 		GithubToken  string `flag:"token" env:"GITHUB_TOKEN" description:"Github token"`
 		Organization string `flag:"org" description:"Github Organization"`
+		OutFile      string `flag:"out,o" default:"-" description:"Output file"`
 	}{}
 	if err := rconfig.Parse(&cfg); err != nil {
 		log.Fatalf("Error parsing cli flags: %s", err)
@@ -99,16 +118,26 @@ func main() {
 	if err != nil {
 		log.Fatalf("fetching members failed: %s", err)
 	}
-	for _, member := range members {
-		keys, _, err := client.Users.ListKeys(*member.Login, nil)
-		if err != nil {
-			log.Fatalf("Error when fetching keys: %s", err)
+
+	switch cfg.OutFile {
+	case "-":
+		if err := writeKeys(os.Stdout, members); err != nil {
+			log.Fatalf("Unable to write keys: %s", err)
 		}
-		for _, key := range keys {
-			if key.Key == nil {
-				log.Fatalf("Key is null pointer for %s!", *member.Login)
-			}
-			fmt.Println(*key.Key)
+	default:
+		o, err := os.Create(cfg.OutFile + ".tmp")
+		if err != nil {
+			log.Fatalf("Unable to open output file: %s", err)
+		}
+
+		if err := writeKeys(o, members); err != nil {
+			log.Fatalf("Unable to write keys: %s", err)
+		}
+
+		o.Close()
+
+		if err := os.Rename(cfg.OutFile+".tmp", cfg.OutFile); err != nil {
+			log.Fatalf("Moving tmp file to %s failed: %s", cfg.OutFile, err)
 		}
 	}
 }

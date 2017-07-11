@@ -1,5 +1,4 @@
 language: go
 
-
-script:
-  - make ci
+after_success:
+    - test -n "$TRAVIS_TAG" && make release

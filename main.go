@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 
@@ -103,6 +104,7 @@ func main() {
 		GithubToken  string `flag:"token" env:"GITHUB_TOKEN" description:"Github token"`
 		Organization string `flag:"org" description:"Github Organization"`
 		OutFile      string `flag:"out,o" default:"-" description:"Output file"`
+		Append       bool   `flag:"append" description:"Append ssh keys"`
 	}{}
 	if err := rconfig.Parse(&cfg); err != nil {
 		log.Fatalf("Error parsing cli flags: %s", err)
@@ -128,6 +130,14 @@ func main() {
 		o, err := os.Create(cfg.OutFile + ".tmp")
 		if err != nil {
 			log.Fatalf("Unable to open output file: %s", err)
+		}
+
+		if cfg.Append {
+			current, err := ioutil.ReadFile(cfg.OutFile)
+			/* if we got something write it */
+			if err == nil {
+				o.Write(current)
+			}
 		}
 
 		if err := writeKeys(client, o, members); err != nil {

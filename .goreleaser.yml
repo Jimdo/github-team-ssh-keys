@@ -1,19 +1,14 @@
+archives:
+  - format: binary
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 builds:
   - env:
       - CGO_ENABLED=0
     goos:
       - linux
       - darwin
-archives:
-  - replacements:
-      darwin: Darwin
-      linux: Linux
-      386: i386
-      amd64: x86_64
 checksum:
-  name_template: 'checksums.txt'
-snapshot:
-  name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+  name_template: 'github-team-ssh-keys_checksums.txt'
 changelog:
   sort: asc
   filters:
